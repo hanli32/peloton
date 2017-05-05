@@ -38,6 +38,8 @@
 #include <boost/algorithm/string.hpp>
 #include <include/parser/postgresparser.h>
 
+#include "common/profiler.h"
+
 // #define NEW_OPTIMIZER
 
 namespace peloton {
@@ -89,6 +91,8 @@ TrafficCop::TcopTxnState &TrafficCop::GetCurrentTxnState() {
 }
 
 ResultType TrafficCop::BeginQueryHelper(const size_t thread_id) {
+  Profiler::InsertTimePoint("begin transaction");
+
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
   auto txn = txn_manager.BeginTransaction(thread_id);
 
@@ -113,6 +117,9 @@ ResultType TrafficCop::CommitQueryHelper() {
     auto txn = curr_state.first;
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
     auto result = txn_manager.CommitTransaction(txn);
+
+    Profiler::EndProfiling();
+
     return result;
   } else {
     // otherwise, the txn has already been aborted
@@ -196,9 +203,14 @@ ResultType TrafficCop::ExecuteStatement(
     else if (statement->GetQueryType() == "ROLLBACK")
       return AbortQueryHelper();
     else {
+      Profiler::InsertTimePoint("begin statement");
+
       auto status = ExecuteStatementPlan(statement->GetPlanTree().get(), params,
                                          result, result_format,
                                          thread_id);
+
+      Profiler::InsertTimePoint("end statement");
+
       LOG_TRACE("Statement executed. Result: %s",
                 ResultTypeToString(status.m_result).c_str());
       rows_changed = status.m_processed;
@@ -279,6 +291,8 @@ std::shared_ptr<Statement> TrafficCop::PrepareStatement(
   LOG_TRACE("Prepare Statement name: %s", statement_name.c_str());
   LOG_TRACE("Prepare Statement query: %s", query_string.c_str());
 
+  Profiler::InsertTimePoint("begin prepare stmt");
+
   std::shared_ptr<Statement> statement(
       new Statement(statement_name, query_string));
   try {
@@ -287,8 +301,13 @@ std::shared_ptr<Statement> TrafficCop::PrepareStatement(
     if (sql_stmt->is_valid == false) {
       throw ParserException("Error parsing SQL statement");
     }
+
+    Profiler::InsertTimePoint("begin build plan tree");
+
     auto plan = optimizer_->BuildPelotonPlanTree(sql_stmt);
     statement->SetPlanTree(plan);
+
+    Profiler::InsertTimePoint("end build plan tree");
 
     // Get the tables that our plan references so that we know how to
     // invalidate it at a later point when the catalog changes
@@ -311,6 +330,9 @@ std::shared_ptr<Statement> TrafficCop::PrepareStatement(
       LOG_TRACE("%s", statement->GetPlanTree().get()->GetInfo().c_str());
     }
 #endif
+
+    Profiler::InsertTimePoint("end prepare stmt");
+
     return std::move(statement);
   } catch (Exception &e) {
     error_message = e.what();

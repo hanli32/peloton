@@ -28,6 +28,7 @@
 #include "type/value.h"
 #include "type/value_factory.h"
 #include "wire/marshal.h"
+#include "common/profiler.h"
 
 #define PROTO_MAJOR_VERSION(x) x >> 16
 
@@ -128,6 +129,13 @@ void PacketManager::MakeHardcodedParameterStatus(
  *  (after the size field of the header).
  */
 bool PacketManager::ProcessStartupPacket(InputPacket *pkt) {
+  if (Profiler::IsProfiling() == false) {
+	LOG_INFO("Begin Profiling");
+	Profiler::BeginProfiling();
+  }else {
+	LOG_INFO("Cannot Begin Profiling");
+  }
+
   std::string token, value;
   std::unique_ptr<OutputPacket> response(new OutputPacket());
 
@@ -321,6 +329,9 @@ void PacketManager::ExecQueryMessage(InputPacket *pkt, const size_t thread_id) {
       std::string error_message;
       int rows_affected;
 
+      Profiler::InsertTimePoint(query);
+      LOG_INFO("[ExecQueryMessage] insert profiling point");
+
       // execute the query using tcop
       auto status = traffic_cop_->ExecuteStatement(
           query, result, tuple_descriptor, rows_affected, error_message,
@@ -361,6 +372,8 @@ void PacketManager::ExecQueryMessage(InputPacket *pkt, const size_t thread_id) {
  * exec_parse_message - handle PARSE message
  */
 void PacketManager::ExecParseMessage(InputPacket *pkt) {
+  Profiler::InsertTimePoint("begin parse transaction");
+
   std::string error_message, statement_name, query_string, query_type;
   GetStringToken(pkt, statement_name);
 
@@ -381,6 +394,9 @@ void PacketManager::ExecParseMessage(InputPacket *pkt) {
     std::unique_ptr<OutputPacket> response(new OutputPacket());
     response->msg_type = NetworkMessageType::PARSE_COMPLETE;
     responses.push_back(std::move(response));
+
+    Profiler::InsertTimePoint("end parse transaction");
+
     return;
   }
 
@@ -397,6 +413,9 @@ void PacketManager::ExecParseMessage(InputPacket *pkt) {
     SendErrorResponse(
         {{NetworkMessageType::HUMAN_READABLE_ERROR, error_message}});
     LOG_TRACE("ExecParse Error");
+
+    Profiler::InsertTimePoint("end parse transaction");
+
     return;
   }
 
@@ -441,6 +460,8 @@ void PacketManager::ExecParseMessage(InputPacket *pkt) {
   std::unique_ptr<OutputPacket> response(new OutputPacket());
   response->msg_type = NetworkMessageType::PARSE_COMPLETE;
   responses.push_back(std::move(response));
+
+  Profiler::InsertTimePoint("end parse transaction");
 }
 
 void PacketManager::ExecBindMessage(InputPacket *pkt) {
@@ -816,6 +837,8 @@ void PacketManager::ExecExecuteMessage(InputPacket *pkt,
   bool unnamed = statement_name.empty();
   auto param_values = portal->GetParameters();
 
+  Profiler::InsertTimePoint(statement_name);
+
   auto status = traffic_cop_->ExecuteStatement(
       statement, param_values, unnamed, param_stat, result_format_, results,
       rows_affected, error_message, thread_id);
@@ -839,6 +862,9 @@ void PacketManager::ExecExecuteMessage(InputPacket *pkt,
       auto tuple_descriptor = statement->GetTupleDescriptor();
       SendDataRows(results, tuple_descriptor.size(), rows_affected);
       CompleteCommand(query_type, rows_affected);
+
+      Profiler::InsertTimePoint("send back");
+
       return;
     }
   }

@@ -85,6 +85,7 @@ void TimestampOrderingTransactionManager::InitTupleReserved(
 }
 
 Transaction *TimestampOrderingTransactionManager::BeginTransaction(const size_t thread_id) {
+  begin_counter ++;
 
   auto &log_manager = logging::LogManager::GetInstance();
   log_manager.PrepareLogging();
@@ -105,6 +106,8 @@ Transaction *TimestampOrderingTransactionManager::BeginTransaction(const size_t 
 }
 
 Transaction *TimestampOrderingTransactionManager::BeginReadonlyTransaction(const size_t thread_id) {
+  rbegin_counter++;
+
   Transaction *txn = nullptr;
 
   // transaction processing with centralized epoch manager
@@ -760,6 +763,7 @@ void TimestampOrderingTransactionManager::PerformDelete(
 ResultType TimestampOrderingTransactionManager::CommitTransaction(
     Transaction *const current_txn) {
   LOG_TRACE("Committing peloton txn : %lu ", current_txn->GetTransactionId());
+  commit_counter++;
 
   if (current_txn->IsDeclaredReadOnly() == true) {
     EndReadonlyTransaction(current_txn);
@@ -923,6 +927,7 @@ ResultType TimestampOrderingTransactionManager::CommitTransaction(
 
 ResultType TimestampOrderingTransactionManager::AbortTransaction(
     Transaction *const current_txn) {
+  abort_counter++;
   // It's impossible that a pre-declared readonly transaction aborts
   PL_ASSERT(current_txn->IsDeclaredReadOnly() == false);
 

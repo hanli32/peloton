@@ -90,6 +90,7 @@ TrafficCop::TcopTxnState &TrafficCop::GetCurrentTxnState() {
 
 ResultType TrafficCop::BeginQueryHelper(const size_t thread_id) {
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+  // concurrency::TransactionManager::txn_counter++;
   auto txn = txn_manager.BeginTransaction(thread_id);
 
   // this shouldn't happen
@@ -112,6 +113,7 @@ ResultType TrafficCop::CommitQueryHelper() {
   if (curr_state.second != ResultType::ABORTED) {
     auto txn = curr_state.first;
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+    // concurrency::TransactionManager::txn_counter--;
     auto result = txn_manager.CommitTransaction(txn);
     return result;
   } else {
@@ -129,6 +131,7 @@ ResultType TrafficCop::AbortQueryHelper() {
   if (curr_state.second != ResultType::ABORTED) {
     auto txn = curr_state.first;
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+    // concurrency::TransactionManager::txn_counter--;
     auto result = txn_manager.AbortTransaction(txn);
     return result;
   } else {
@@ -224,6 +227,7 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
     // new txn, reset result status
     curr_state.second = ResultType::SUCCESS;
+    concurrency::TransactionManager::txn_counter++;
     txn = txn_manager.BeginTransaction(thread_id);
     single_statement_txn = true;
   } else {
@@ -245,6 +249,7 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
     auto txn_result = txn->GetResult();
     if (single_statement_txn == true || init_failure == true ||
         txn_result == ResultType::FAILURE) {
+      if (single_statement_txn == true) concurrency::TransactionManager::txn_counter--;
       auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
       LOG_TRACE(
@@ -255,6 +260,8 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
         case ResultType::SUCCESS:
           // Commit
           LOG_TRACE("Commit Transaction");
+          //if (single_statement_txn == true)
+          //  concurrency::TransactionManager::txn_counter--;
           p_status.m_result = txn_manager.CommitTransaction(txn);
           break;
 
@@ -262,6 +269,8 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
         default:
           // Abort
           LOG_TRACE("Abort Transaction");
+          //if (single_statement_txn == true)
+          //  concurrency::TransactionManager::txn_counter--;
           p_status.m_result = txn_manager.AbortTransaction(txn);
           curr_state.second = ResultType::ABORTED;
       }

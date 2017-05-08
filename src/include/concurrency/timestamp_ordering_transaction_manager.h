@@ -137,8 +137,8 @@ private:
       int abortc = abort_counter.load();
       int rbeginc = rbegin_counter.load();
       int left = beginc + rbeginc - abortc - commitc;
-      printf("left: %d, begin = %d, robegin: %d, commit: %d, abort: %d",
-       left, beginc, rbeginc, commitc, abortc);
+      LOG_INFO("left: %d, begin = %d, robegin: %d, commit: %d, abort: %d, tcop: %d",
+       left, beginc, rbeginc, commitc, abortc, concurrency::TransactionManager::txn_counter.load());
     }
   }
 

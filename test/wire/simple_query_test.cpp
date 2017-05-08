@@ -42,6 +42,7 @@ static void *LaunchServer(peloton::wire::LibeventServer libeventserver,
 /**
  * Simple select query test
  */
+/*
 void *SimpleQueryTest(int port) {
   try {
     pqxx::connection C(StringUtil::Format(
@@ -77,7 +78,7 @@ void *SimpleQueryTest(int port) {
   LOG_INFO("[SimpleQueryTest] Client has closed");
   return NULL;
 }
-
+*/
 /**
  * rollback test
  * YINGJUN: rewrite wanted.
@@ -157,14 +158,14 @@ TEST_F(SimpleQueryTests, SimpleQueryTest) {
   LOG_INFO("Server initialized");
   peloton::wire::LibeventServer libeventserver;
 
-  int port = 15721;
+  int port = 5431;
   std::thread serverThread(LaunchServer, libeventserver, port);
   while (!libeventserver.GetIsStarted()) {
     sleep(1);
   }
-
+  sleep(30);
   // server & client running correctly
-  SimpleQueryTest(port);
+  // SimpleQueryTest(port);
 
   libeventserver.CloseServer();
   serverThread.join();

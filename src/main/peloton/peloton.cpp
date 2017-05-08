@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
     // Start Libevent Server    
     libeventserver.StartServer();
 
+    libeventserver.CloseServer();
     // Teardown
     peloton::PelotonInit::Shutdown();
   }

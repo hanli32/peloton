@@ -75,15 +75,17 @@ TrafficCop &TrafficCop::GetInstance() {
   return tcop;
 }
 
+/*
 TrafficCop::TcopTxnState &TrafficCop::GetDefaultTxnState() {
   static TcopTxnState default_state;
   default_state = std::make_pair(nullptr, ResultType::INVALID);
   return default_state;
 }
+*/
 
 TrafficCop::TcopTxnState &TrafficCop::GetCurrentTxnState() {
   if (tcop_txn_state_.empty()) {
-    return GetDefaultTxnState();
+    return nullptr;
   }
   return tcop_txn_state_.top();
 }
@@ -223,6 +225,7 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
 
   auto &curr_state = GetCurrentTxnState();
   if (tcop_txn_state_.empty()) {
+    curr_state = std::make_pair(nullptr, ResultType::INVALID);
     // no active txn, single-statement txn
     auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
     // new txn, reset result status
@@ -235,9 +238,9 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
     txn = curr_state.first;
   }
   
-  // if (curr_state.second == ResultType::ABORTED && single_statement_txn == true) {
-  //  PL_ASSERT(!single_statement_txn);
-  // }
+  if (curr_state.second == ResultType::ABORTED && single_statement_txn == true) {
+    PL_ASSERT(!single_statement_txn);
+  }
   // skip if already aborted
   if (curr_state.second != ResultType::ABORTED) {
     PL_ASSERT(txn);

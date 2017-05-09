@@ -97,7 +97,7 @@ class TrafficCop {
   std::stack<TcopTxnState> tcop_txn_state_;
 
  private:
-  static TcopTxnState &GetDefaultTxnState();
+  // static TcopTxnState &GetDefaultTxnState();
 
   TcopTxnState &GetCurrentTxnState();
 

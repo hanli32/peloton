@@ -14,6 +14,8 @@
 #include <chrono>
 #include <vector>
 #include <iostream>
+#include <iomanip>
+#include <ctime>
 
 using namespace std::chrono;
 
@@ -29,6 +31,7 @@ public:
     time_points_.clear();
     begin_time_ = steady_clock::now();
     is_profiling_ = true;
+    //std::cout <<"[just begin our profiling]" << std::endl;
   }
 
   static void EndProfiling() {

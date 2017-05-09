@@ -129,13 +129,6 @@ void PacketManager::MakeHardcodedParameterStatus(
  *  (after the size field of the header).
  */
 bool PacketManager::ProcessStartupPacket(InputPacket *pkt) {
-  if (Profiler::IsProfiling() == false) {
-	LOG_INFO("Begin Profiling");
-	Profiler::BeginProfiling();
-  }else {
-	LOG_INFO("Cannot Begin Profiling");
-  }
-
   std::string token, value;
   std::unique_ptr<OutputPacket> response(new OutputPacket());
 
@@ -794,6 +787,10 @@ bool PacketManager::ExecDescribeMessage(InputPacket *pkt) {
 
 void PacketManager::ExecExecuteMessage(InputPacket *pkt,
                                        const size_t thread_id) {
+  if (Profiler::IsProfiling() == false) {
+    Profiler::BeginProfiling();
+  }
+
   // EXECUTE message
   std::vector<StatementResult> results;
   std::string error_message, portal_name;

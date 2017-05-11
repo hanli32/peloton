@@ -237,10 +237,7 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
     // get ptr to current active txn
     txn = curr_state.first;
   }
-  
-  if (curr_state.second == ResultType::ABORTED && single_statement_txn == true) {
-    PL_ASSERT(!single_statement_txn);
-  }
+
   // skip if already aborted
   if (curr_state.second != ResultType::ABORTED) {
     PL_ASSERT(txn);
@@ -282,15 +279,9 @@ executor::ExecuteResult TrafficCop::ExecuteStatementPlan(
       }
     }
   } else {
-    if (single_statement_txn == true) {
-      concurrency::TransactionManager::txn_counter--;
-      auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
-      txn_manager.AbortTransaction(txn);
-    }
     // otherwise, we have already aborted
     p_status.m_result = ResultType::ABORTED;
   }
-  // if (single_statement_txn == true) concurrency::TransactionManager::txn_counter--;
   return p_status;
 }
 
